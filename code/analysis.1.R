@@ -1,6 +1,7 @@
 # this script performs the following analyses from the manuscript: 
 #   cycling cells identification
 #   cell types identification (via markers and clustering)
+#   t-sne of all cells
 #   clustering of epithelial cells
 #   differential expression between clusters
 #   basal PNAS signature
@@ -9,11 +10,13 @@
 #   mammaprint signature (PS)
 #   zena werb signature (MBS)
 #   carlos artega signature (RTS)
+#   expression of genes in the metabolsims and immunity pathways
 # this script generates the following figures from the manuscript: 
 #   fig. 1b (heatmap)
 #   fig. 1c (barplot)
-#   fig. 1d (barplot)
 #   fig. 1e and S2 (plots per patient)
+#   fig. 1d (barplot)
+#   fig. 2a, 2b, 2c (t-sne)
 #   fig. S9 (per patient and per cluster plots)
 #   fig. 3a (t-sne)
 #   fig. S6 (barplot)
@@ -560,8 +563,7 @@ for (i in 1:length(patients_now)) {
 }
 
 
-#####
-# barplot cell cycle phase for all patients
+## barplot cell cycle phase for all patients
 tbl_pd_cycle <- tbl_pd_ct %>%
   group_by(patient) %>%
   mutate(cycling_mel = factor(cycling_mel, levels = c("cycling", "non-cycling"))) %>%
@@ -572,6 +574,65 @@ ggplot() +
   geom_bar(data = tbl_pd_cycle, aes(x = patient, fill = factor(cycling_mel)), position = position_fill(reverse = TRUE)) +
   scale_fill_manual(values = anno_colors$cycling) +
   labs(fill = "cycling status", y = "fraction of cells")
+#dev.off()
+
+
+## tsne on cell types
+# all cells
+to_plot_ct <- unique(pd_ct$cell_types_cl_all)
+mat_short_ct <- mat_ct[, which(pd_ct$cell_types_cl_all %in% to_plot_ct)]
+pd_short_ct <- pd_ct[which(pd_ct$cell_types_cl_all %in% to_plot_ct), ]
+tsne_short_ct <- Rtsne(t(mat_short_ct), perplexity = 30)
+colnames(tsne_short_ct$Y) <- c("col1", "col2")
+tsne_short_ct$Y <- as.data.frame(tsne_short_ct$Y)
+tsne_short_ct$Y$cell_types_cl_all <- pd_short_ct$cell_types_cl_all
+tsne_short_ct$Y$cell_types_markers <- pd_short_ct$cell_types_markers
+tsne_short_ct$Y$patient <- pd_short_ct$patient
+
+#pdf(here("plots", "fig2a.pdf"))
+ggplot(tsne_short_ct$Y, aes(x = col1, y = col2, color = factor(cell_types_cl_all, levels = names(anno_colors$tsne)), 
+                            shape = patient)) + 
+  geom_point(size = 4) + 
+  scale_color_manual(values = anno_colors$tsne) +
+  labs(col = "patient", x = "tSNE dimension 1", y = "tSNE dimension 2", shape = "patient")
+#dev.off()
+
+# epithelial cells
+to_plot_ct <- c("epithelial")
+mat_short_ct <- mat_ct[, which(pd_ct$cell_types_cl_all %in% to_plot_ct)]
+pd_short_ct <- pd_ct[which(pd_ct$cell_types_cl_all %in% to_plot_ct), ]
+tsne_short_ct <- Rtsne(t(mat_short_ct), perplexity = 30)
+colnames(tsne_short_ct$Y) <- c("col1", "col2")
+tsne_short_ct$Y <- as.data.frame(tsne_short_ct$Y)
+tsne_short_ct$Y$cell_types_cl_all <- pd_short_ct$cell_types_cl_all
+tsne_short_ct$Y$cell_types_markers <- pd_short_ct$cell_types_markers
+tsne_short_ct$Y$patient <- pd_short_ct$patient
+
+#pdf(here("plots", "fig2b.pdf"))
+ggplot(tsne_short_ct$Y, aes(x = col1, y = col2, color = factor(patient, levels = names(anno_colors$patient)), 
+                            shape = cell_types_cl_all)) + 
+  geom_point(size = 4) + 
+  scale_color_manual(values = anno_colors$patient) +
+  labs(col = "patient", x = "tSNE dimension 1", y = "tSNE dimension 2", shape = "cell type")
+#dev.off()
+
+# normal cells
+to_plot_ct <- c("Bcell", "macrophage", "Tcell", "stroma", "endothelial")
+mat_short_ct <- mat_ct[, which(pd_ct$cell_types_cl_all %in% to_plot_ct)]
+pd_short_ct <- pd_ct[which(pd_ct$cell_types_cl_all %in% to_plot_ct), ]
+tsne_short_ct <- Rtsne(t(mat_short_ct), perplexity = 30)
+colnames(tsne_short_ct$Y) <- c("col1", "col2")
+tsne_short_ct$Y <- as.data.frame(tsne_short_ct$Y)
+tsne_short_ct$Y$cell_types_cl_all <- pd_short_ct$cell_types_cl_all
+tsne_short_ct$Y$cell_types_markers <- pd_short_ct$cell_types_markers
+tsne_short_ct$Y$patient <- pd_short_ct$patient
+
+#pdf(here("plots", "fig2c.pdf"))
+ggplot(tsne_short_ct$Y, aes(x = col1, y = col2, color = factor(cell_types_cl_all, levels = names(anno_colors$tsne)), 
+                            shape = patient)) + 
+  geom_point(size = 4) + 
+  labs(col = "cell type", x = "tSNE dimension 1", y = "tSNE dimension 2") + 
+  scale_color_manual(values = anno_colors$tsne)
 #dev.off()
 
 
