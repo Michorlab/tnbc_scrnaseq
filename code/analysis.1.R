@@ -1,10 +1,38 @@
 # this script performs the following analyses from the manuscript: 
 #   cycling cells identification
 #   cell types identification (via markers and clustering)
-# this script plots the following figures from the manuscript: 
+#   t-sne of all cells
+#   clustering of epithelial cells
+#   differential expression between clusters
+#   basal PNAS signature
+#   Lehman signatures
+#   normal signatures
+#   mammaprint signature (PS)
+#   zena werb signature (MBS)
+#   carlos artega signature (RTS)
+#   expression of genes in the metabolsims and immunity pathways
+# this script generates the following figures from the manuscript: 
 #   fig. 1b (heatmap)
 #   fig. 1c (barplot)
-#   fig 1d (barplot)
+#   fig. 1e and S2 (plots per patient)
+#   fig. 1d (barplot)
+#   fig. 2a, 2b, 2c (t-sne)
+#   fig. S9 (per patient and per cluster plots)
+#   fig. 3a (t-sne)
+#   fig. S6 (barplot)
+#   fig. 3d (heatmap)
+#   fig. 3g and S8 (per patient and per cluster plots)
+#   fig. 3e (dot plot)
+#   fig. 3b (heatmap)
+#   fig. 3f and S7 (per patient and per cluster plots)
+#   fig. S13 (per patient and per cluster plots)
+#   fig. S14 (per patient and per cluster plots)
+#   fig. S15 (per patient and per cluster plots)
+#   fig. 4a (heatmap)
+#   fig. 4b (violin plot)
+#   fig. S16 (Venn diagram)
+#   fig. S10 (t-sne plots)
+#   fig. S4d (heatmap)
 
 library(here)
 source(here("code", "libraries.R"))
@@ -149,6 +177,7 @@ for (i in 1:length(patients_now)) {
                                          show_legend = FALSE,
                                          gap = unit(c(1, 1), "mm"))
 }
+
 for (i in 1:length(patients_now)) {
   depletion_now[[i]] <- pds_now[[i]][,"depletion_batch"]
   
@@ -287,7 +316,7 @@ HSMM_clustering_ct$Cluster <- HSMM_clustering_ct$cluster_allregr_disp
 table(HSMM_clustering_ct$Cluster)
 
 # due to changes in Monocle's functions (reduceDimension and clusterCells), the resulting clustering is slightly different from
-# the original cluster from the paper. for reproducibility, we read in the original clustering assignment
+# the original clustering from the paper. for reproducibility, we read in the original cluster assignment
 original_clustering <- readRDS(file = here("data", "original_clustering.RDS"))
 HSMM_clustering_ct$Cluster <- original_clustering
 table(HSMM_clustering_ct$Cluster)
@@ -478,7 +507,7 @@ pd_ct <- colData(sceset_ct)
 mat_ct <- assays(sceset_ct)$exprs
 mats_ct <- list()
 pds_ct <- list()
-for (i in 1:length(patients_now)){
+for (i in 1:length(patients_now)) {
   mats_ct[[i]] <- mat_ct[,pd_ct$patient == patients_now[i]]
   pds_ct[[i]] <- pd_ct[pd_ct$patient == patients_now[i],]
 }
@@ -504,7 +533,7 @@ ggplot() +
 
 ## patient cycling plots
 for (i in 1:length(patients_now)) {
-  pdf(here("plots", paste("cycling_patient", patients_now[i], ".pdf", sep = "")))
+  #pdf(here("plots", paste("cycling_patient", patients_now[i], ".pdf", sep = "")))
   percent_epith <- length(intersect_all(which(pd_ct$patient == patients_now[i]), 
                                         which(pd_ct$cell_types_cl_all == "epithelial"), 
                                         which(pd_ct$cycling_mel == "cycling")))/length(intersect_all(
@@ -530,12 +559,11 @@ for (i in 1:length(patients_now)) {
           labs(col = "cell type", shape = "cycling", x = "G1S score", y = "G2M score", 
                title = paste("patient ", patients_now[i], " (", round(percent_all), "% cycling cells)", sep = "")) + 
           scale_color_manual(values = anno_colors$tsne))
-  dev.off()
+  #dev.off()
 }
 
 
-#####
-# barplot cell cycle phase for all patients
+## barplot cell cycle phase for all patients
 tbl_pd_cycle <- tbl_pd_ct %>%
   group_by(patient) %>%
   mutate(cycling_mel = factor(cycling_mel, levels = c("cycling", "non-cycling"))) %>%
@@ -549,7 +577,1057 @@ ggplot() +
 #dev.off()
 
 
+## tsne on cell types
+# all cells
+to_plot_ct <- unique(pd_ct$cell_types_cl_all)
+mat_short_ct <- mat_ct[, which(pd_ct$cell_types_cl_all %in% to_plot_ct)]
+pd_short_ct <- pd_ct[which(pd_ct$cell_types_cl_all %in% to_plot_ct), ]
+tsne_short_ct <- Rtsne(t(mat_short_ct), perplexity = 30)
+colnames(tsne_short_ct$Y) <- c("col1", "col2")
+tsne_short_ct$Y <- as.data.frame(tsne_short_ct$Y)
+tsne_short_ct$Y$cell_types_cl_all <- pd_short_ct$cell_types_cl_all
+tsne_short_ct$Y$cell_types_markers <- pd_short_ct$cell_types_markers
+tsne_short_ct$Y$patient <- pd_short_ct$patient
+
+#pdf(here("plots", "fig2a.pdf"))
+ggplot(tsne_short_ct$Y, aes(x = col1, y = col2, color = factor(cell_types_cl_all, levels = names(anno_colors$tsne)), 
+                            shape = patient)) + 
+  geom_point(size = 4) + 
+  scale_color_manual(values = anno_colors$tsne) +
+  labs(col = "patient", x = "tSNE dimension 1", y = "tSNE dimension 2", shape = "patient")
+#dev.off()
+
+# epithelial cells
+to_plot_ct <- c("epithelial")
+mat_short_ct <- mat_ct[, which(pd_ct$cell_types_cl_all %in% to_plot_ct)]
+pd_short_ct <- pd_ct[which(pd_ct$cell_types_cl_all %in% to_plot_ct), ]
+tsne_short_ct <- Rtsne(t(mat_short_ct), perplexity = 30)
+colnames(tsne_short_ct$Y) <- c("col1", "col2")
+tsne_short_ct$Y <- as.data.frame(tsne_short_ct$Y)
+tsne_short_ct$Y$cell_types_cl_all <- pd_short_ct$cell_types_cl_all
+tsne_short_ct$Y$cell_types_markers <- pd_short_ct$cell_types_markers
+tsne_short_ct$Y$patient <- pd_short_ct$patient
+
+#pdf(here("plots", "fig2b.pdf"))
+ggplot(tsne_short_ct$Y, aes(x = col1, y = col2, color = factor(patient, levels = names(anno_colors$patient)), 
+                            shape = cell_types_cl_all)) + 
+  geom_point(size = 4) + 
+  scale_color_manual(values = anno_colors$patient) +
+  labs(col = "patient", x = "tSNE dimension 1", y = "tSNE dimension 2", shape = "cell type")
+#dev.off()
+
+# normal cells
+to_plot_ct <- c("Bcell", "macrophage", "Tcell", "stroma", "endothelial")
+mat_short_ct <- mat_ct[, which(pd_ct$cell_types_cl_all %in% to_plot_ct)]
+pd_short_ct <- pd_ct[which(pd_ct$cell_types_cl_all %in% to_plot_ct), ]
+tsne_short_ct <- Rtsne(t(mat_short_ct), perplexity = 30)
+colnames(tsne_short_ct$Y) <- c("col1", "col2")
+tsne_short_ct$Y <- as.data.frame(tsne_short_ct$Y)
+tsne_short_ct$Y$cell_types_cl_all <- pd_short_ct$cell_types_cl_all
+tsne_short_ct$Y$cell_types_markers <- pd_short_ct$cell_types_markers
+tsne_short_ct$Y$patient <- pd_short_ct$patient
+
+#pdf(here("plots", "fig2c.pdf"))
+ggplot(tsne_short_ct$Y, aes(x = col1, y = col2, color = factor(cell_types_cl_all, levels = names(anno_colors$tsne)), 
+                            shape = patient)) + 
+  geom_point(size = 4) + 
+  labs(col = "cell type", x = "tSNE dimension 1", y = "tSNE dimension 2") + 
+  scale_color_manual(values = anno_colors$tsne)
+#dev.off()
 
 
+## clustering of epithelial cells
+HSMM_allepith_clustering <- monocle_unsup_clust_plots(sceset_obj = sceset_ct[,which(colData(sceset_ct)$cell_types_cl_all == "epithelial")], 
+                                                      mat_to_cluster = mat_ct[,which(colData(sceset_ct)$cell_types_cl_all == "epithelial")], 
+                                                      anno_colors = anno_colors, name_in_phenodata = "cluster_allepith_regr_disp", 
+                                                      disp_extra = 1, save_plots = 0, path_plots = NULL, 
+                                                      type_pats = "allpats", regress_pat = 1, use_known_colors = 1, use_only_known_celltypes = 1)
+table(HSMM_allepith_clustering$Cluster)
 
+
+# due to changes in Monocle's functions (reduceDimension and clusterCells), the resulting clustering of epithelial cells
+# is slightly different from the original clustering from the paper. for reproducibility, we read in the original 
+# clustering of epithelial cells
+original_clustering_epithelial <- readRDS(file = here("data", "original_clustering_epithelial.RDS"))
+table(original_clustering_epithelial)
+
+HSMM_allepith_clustering$Cluster <- original_clustering_epithelial
+clustering_allepith <- HSMM_allepith_clustering$Cluster
+
+#pdf(here("plots", "fig3a.pdf"))
+plot_cell_clusters(HSMM_allepith_clustering, 1, 2, color = "Cluster", cell_size = 2) + 
+  scale_color_manual(values = c("1" = "#ee204d", "2" = "#17806d", "3" = "#b2ec5d", "4" = "#cda4de", "5" = "#1974d2"))
+#dev.off()
+
+clusterings_sep_allepith <- list()
+for (i in patients_now) {
+  clusterings_sep_allepith[[i]] <- clustering_allepith[which(HSMM_allepith_clustering$patient == i)]
+  names(clusterings_sep_allepith[[i]]) <- colnames(HSMM_allepith_clustering)[which(HSMM_allepith_clustering$patient == i)]
+}
+
+
+## barplot cycling/non-cycling per Cluster
+tbl_pd_cluster <- tbl_df(pData(HSMM_allepith_clustering))
+tbl_pd_cluster <- tbl_pd_cluster %>%
+  group_by(Cluster) %>%
+  mutate(cycling_mel = factor(cycling_mel, levels = c("cycling", "non-cycling"))) %>%
+  arrange(cycling_mel)
+
+#pdf(here("plots", "figS6.pdf"))
+ggplot() +
+  geom_bar(data = tbl_pd_cluster, aes(x = Cluster, fill = factor(cycling_mel)), position = position_fill(reverse = TRUE)) +
+  scale_fill_manual(values = anno_colors$cycling) +
+  labs(fill = "cycling status", y = "fraction of cells")
+#dev.off()
+
+
+## differential expression between clusters, each cluster vs. all the others
+HSMM_for_DE <- HSMM_allepith_clustering
+diff_test_res <- list()
+
+HSMM_for_DE$allvs1 <- clustering_allepith
+HSMM_for_DE$allvs1 <- as.numeric(HSMM_for_DE$allvs1)
+HSMM_for_DE$allvs1[which(HSMM_for_DE$allvs1 != 1)] <- 2
+diff_test_res$allvs1 <- differentialGeneTest(HSMM_for_DE, fullModelFormulaStr = "~allvs1", cores = 3)
+diff_test_res$allvs1 <- diff_test_res$allvs1[order(diff_test_res$allvs1$qval),]
+diff_test_res$allvs1 <- diff_test_res$allvs1[which(diff_test_res$allvs1$qval <= 0.1),]
+head(diff_test_res$allvs1[,1:5], n = 10)
+#write.table(diff_test_res$allvs1, here("tables", "diffexp_genes_allvs1.txt"), sep = "\t", quote = FALSE, row.names = FALSE)
+
+HSMM_for_DE$allvs2 <- clustering_allepith
+HSMM_for_DE$allvs2 <- as.numeric(HSMM_for_DE$allvs2)
+HSMM_for_DE$allvs2[which(HSMM_for_DE$allvs2 != 2)] <- 3
+diff_test_res$allvs2 <- differentialGeneTest(HSMM_for_DE, fullModelFormulaStr = "~allvs2", cores = 3)
+diff_test_res$allvs2 <- diff_test_res$allvs2[order(diff_test_res$allvs2$qval),]
+diff_test_res$allvs2 <- diff_test_res$allvs2[which(diff_test_res$allvs2$qval <= 0.1),]
+head(diff_test_res$allvs2[,1:5], n = 10)
+#write.table(diff_test_res$allvs2, here("tables", "diffexp_genes_allvs2.txt"), sep = "\t", quote = FALSE, row.names = FALSE)
+
+HSMM_for_DE$allvs3 <- clustering_allepith
+HSMM_for_DE$allvs3 <- as.numeric(HSMM_for_DE$allvs3)
+HSMM_for_DE$allvs3[which(HSMM_for_DE$allvs3 != 3)] <- 4
+diff_test_res$allvs3 <- differentialGeneTest(HSMM_for_DE, fullModelFormulaStr = "~allvs3", cores = 3)
+diff_test_res$allvs3 <- diff_test_res$allvs3[order(diff_test_res$allvs3$qval),]
+diff_test_res$allvs3 <- diff_test_res$allvs3[which(diff_test_res$allvs3$qval <= 0.1),]
+head(diff_test_res$allvs3[,1:5], n = 10)
+#write.table(diff_test_res$allvs3, here("tables", "diffexp_genes_allvs3.txt"), sep = "\t", quote = FALSE, row.names = FALSE)
+
+HSMM_for_DE$allvs4 <- clustering_allepith
+HSMM_for_DE$allvs4 <- as.numeric(HSMM_for_DE$allvs4)
+HSMM_for_DE$allvs4[which(HSMM_for_DE$allvs4 != 4)] <- 5
+diff_test_res$allvs4 <- differentialGeneTest(HSMM_for_DE, fullModelFormulaStr = "~allvs4", cores = 3)
+diff_test_res$allvs4 <- diff_test_res$allvs4[order(diff_test_res$allvs4$qval),]
+diff_test_res$allvs4 <- diff_test_res$allvs4[which(diff_test_res$allvs4$qval <= 0.1),]
+head(diff_test_res$allvs4[,1:5], n = 10)
+#write.table(diff_test_res$allvs4, here("tables", "diffexp_genes_allvs4.txt"), sep = "\t", quote = FALSE, row.names = FALSE)
+
+HSMM_for_DE$allvs5 <- clustering_allepith
+HSMM_for_DE$allvs5 <- as.numeric(HSMM_for_DE$allvs5)
+HSMM_for_DE$allvs5[which(HSMM_for_DE$allvs5 != 5)] <- 6
+diff_test_res$allvs5 <- differentialGeneTest(HSMM_for_DE, fullModelFormulaStr = "~allvs5", cores = 3)
+diff_test_res$allvs5 <- diff_test_res$allvs5[order(diff_test_res$allvs5$qval),]
+diff_test_res$allvs5 <- diff_test_res$allvs5[which(diff_test_res$allvs5$qval <= 0.1),]
+head(diff_test_res$allvs5[,1:5], n = 10)
+#write.table(diff_test_res$allvs5, here("tables", "diffexp_genes_allvs5.txt"), sep = "\t", quote = FALSE, row.names = FALSE)
+
+
+## basal vs. nonbasal PNAS signature
+basal_PNAS_all <- read.table(here("data", "genes_for_basal_vs_non_basal_tnbc_PNAS.txt"), header = TRUE, sep = "\t")
+basal_PNAS_long <- basal_PNAS_all$Basal.epithelial.cell.enriched.cluster
+basal_PNAS <- intersect(basal_PNAS_long, rownames(mat_ct))
+basal_PNAS_avg_exprs <- apply(mat_ct[match(basal_PNAS, rownames(mat_ct)),], 2, mean)
+all.equal(names(basal_PNAS_avg_exprs), colnames(mat_ct))
+basal_PNAS_avg_exprs <- basal_PNAS_avg_exprs[which(pd_ct$cell_types_cl_all == "epithelial")]
+
+# per patient and per cluster PAM50 signature plots
+all.equal(colnames(HSMM_allepith_clustering), names(basal_PNAS_avg_exprs))
+pData(HSMM_allepith_clustering)$basal_PNAS_avg_exprs <- basal_PNAS_avg_exprs
+
+#pdf(here("plots", "figS9b.pdf"), width = 10)
+plot_cell_clusters(HSMM_allepith_clustering, 1, 2, color = "basal_PNAS_avg_exprs", cell_size = 2) + facet_wrap(~patient) +
+  scale_color_continuous(low = "yellow", high = "blue")
+#dev.off()
+
+#pdf(here("plots", "figS9a.pdf"), width = 10)
+plot_cell_clusters(HSMM_allepith_clustering, 1, 2, color = "basal_PNAS_avg_exprs", cell_size = 2) + facet_wrap(~Cluster) +
+  scale_color_continuous(low = "yellow", high = "blue")
+#dev.off()
+
+
+## Lehman signature
+lehman_long <- read.table(here("data", "Lehman_signature.txt"), sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+for (i in 0:5) {
+  
+  gene <- "gene"
+  regulation <- "regulation"
+  no_samples <- "no_samples"
+  signature <- "signature"
+  
+  if (i == 0) {
+    lehman <- lehman_long[, 1:4]
+    lehman <- lehman[-which(lehman$signature == ""),]
+  }
+  
+  if (i > 0) {
+    gene <- paste("gene", i, sep = ".")
+    regulation <- paste("regulation", i, sep = ".")
+    no_samples <- paste("no_samples", i, sep = ".")
+    signature <- paste("signature", i, sep = ".")
+    
+    mat_to_bind <- lehman_long[, c(gene, regulation, no_samples, signature)]
+    colnames(mat_to_bind) <- c("gene", "regulation", "no_samples", "signature")
+    if (length(which(is.na(mat_to_bind$no_samples))) > 0 )
+      mat_to_bind <- mat_to_bind[-which(mat_to_bind$signature == ""),]
+    lehman <- rbind(lehman, mat_to_bind)
+  }
+}
+
+lehman <- tbl_df(lehman) %>%
+  group_by(signature)
+lehman <- lehman[which(!is.na(match(lehman$gene, rownames(mat_ct)))),]
+
+lehman_signatures <- unique(lehman$signature)
+
+lehman_avg_exps <- apply(mat_ct, 2, function(x){
+  
+  mns <- matrix(NA, nrow = length(lehman_signatures), ncol = 2)
+  rownames(mns) <- lehman_signatures
+  for (s in 1:length(lehman_signatures)) {
+    sign <- lehman_signatures[s] # current signature
+    lehman_here <- lehman %>%
+      dplyr::filter(signature == sign)
+    lehman_here_up <- lehman_here %>%
+      dplyr::filter(regulation == "UP")
+    lehman_here_down <- lehman_here %>%
+      dplyr::filter(regulation == "DOWN")
+    
+    # indices of genes in the expression matrix
+    idx_genes_up <- match(lehman_here_up$gene, rownames(mat_ct)) 
+    idx_genes_down <- match(lehman_here_down$gene, rownames(mat_ct))
+    
+    mns[s,] <- c(mean(x[idx_genes_up]), mean(x[idx_genes_down]))
+  }
+  return(mns)
+})
+all.equal(colnames(lehman_avg_exps), rownames(pd_ct))
+lehman_avg_exprs_epithelial <- lehman_avg_exps[,which(pd_ct$cell_types_cl_all == "epithelial")]
+
+lehman_avg_ups <- lehman_avg_exps[c(1:6), ]
+rownames(lehman_avg_ups) <- lehman_signatures
+all.equal(colnames(lehman_avg_ups), rownames(pd_ct))
+lehman_avg_ups_epithelial <- lehman_avg_ups[,which(pd_ct$cell_types_cl_all == "epithelial")]
+
+lehman_avg_downs <- lehman_avg_exps[c(7:12),]
+rownames(lehman_avg_downs) <- lehman_signatures
+all.equal(colnames(lehman_avg_downs), rownames(pd_ct))
+lehman_avg_downs_epithelial <- lehman_avg_downs[,which(pd_ct$cell_types_cl_all == "epithelial")]
+
+lehman_avg_both <- lehman_avg_ups - lehman_avg_downs
+all.equal(colnames(lehman_avg_both), rownames(pd_ct))
+lehman_avg_both_epithelial <- lehman_avg_both[,which(pd_ct$cell_types_cl_all == "epithelial")]
+
+assignments_lehman_both <- apply(lehman_avg_both, 2, function(x){rownames(lehman_avg_both)[which.max(x)]})
+assignments_lehman_both_epithelial <- assignments_lehman_both[which(pd_ct$cell_types_cl_all == "epithelial")]
+
+# update lehman signatures by removing the immunomodulatory and mesenchymal_stem_like signatures
+lehman_avg_both_epithelial_new <- lehman_avg_both_epithelial[-which(rownames(lehman_avg_both_epithelial) %in% c("immunomodulatory", "mesenchymal_stem_like")),]
+assignments_lehman_both_epithelial_new <- apply(lehman_avg_both_epithelial_new, 2, function(x){rownames(lehman_avg_both_epithelial_new)[which.max(x)]})
+
+# Heatmap on lehman expression per patient
+pd_ct_epith <- pd_ct[which(pd_ct$cell_types_cl_all == "epithelial"),]
+lehmans_epith_pat_both <- list()
+lehmans_epith_pat_ups <- list()
+pds_epith_ct <- list()
+for (i in 1:length(patients_now)) {
+  
+  lehmans_epith_pat_both[[i]] <- lehman_avg_both_epithelial[,which(pd_ct_epith$patient == patients_now[i])]
+  lehmans_epith_pat_ups[[i]] <- lehman_avg_ups_epithelial[,which(pd_ct_epith$patient == patients_now[i])]
+  pds_epith_ct[[i]] <- pds_ct[[i]][which(pds_ct[[i]]$cell_types_cl_all == "epithelial"),]
+  
+}
+names(lehmans_epith_pat_both) <- patients_now
+names(lehmans_epith_pat_ups) <- patients_now
+names(pds_epith_ct) <- patients_now
+
+# lehmann expression per patient
+lehmans_epith_pat_both_new <- list()
+for (i in 1:length(patients_now)) {
+  lehmans_epith_pat_both_new[[i]] <- lehman_avg_both_epithelial_new[,which(pd_ct_epith$patient == patients_now[i])]
+}
+names(lehmans_epith_pat_both_new) <- patients_now
+
+# annotations for epithelial cells separate per patiet
+ha_lehman_epith_pat <- list()
+for (i in 1:length(patients_now)) {
+  
+  if (i == 1)
+    ha_lehman_epith_pat[[i]] <- HeatmapAnnotation(data.frame(cluster_all = clusterings_sep_allepith[[i]]), 
+                                                  col = list(cluster_all = c("1" = "#ee204d", "2" = "#17806d", "3" = "#b2ec5d", "4" = "#cda4de", "5" = "#1974d2")),
+                                                  annotation_name_side = "left", annotation_name_gp = gpar(fontsize = 12),
+                                                  annotation_legend_param = list(list(title_position = "topcenter", title = "cluster")),
+                                                  show_annotation_name = FALSE,
+                                                  gap = unit(c(2), "mm"),
+                                                  show_legend = FALSE)
+  
+  if (i > 1 && i != 5 )
+    ha_lehman_epith_pat[[i]] <- HeatmapAnnotation(data.frame(cluster_all = clusterings_sep_allepith[[i]]), 
+                                                  col = list(cluster_all = c("1" = "#ee204d", "2" = "#17806d", "3" = "#b2ec5d", "4" = "#cda4de", "5" = "#1974d2")),
+                                                  annotation_name_side = "left", annotation_name_gp = gpar(fontsize = 12),
+                                                  annotation_legend_param = list(list(title_position = "topcenter", title = "cluster")),
+                                                  show_annotation_name = FALSE,
+                                                  gap = unit(c(2), "mm"),
+                                                  show_legend = FALSE)
+  
+  if (i == 5)
+    ha_lehman_epith_pat[[i]] <- HeatmapAnnotation(data.frame(cluster_all = clusterings_sep_allepith[[i]]), 
+                                                  col = list(cluster_all = c("1" = "#ee204d", "2" = "#17806d", "3" = "#b2ec5d", "4" = "#cda4de", "5" = "#1974d2")),
+                                                  annotation_name_side = "right", annotation_name_gp = gpar(fontsize = 12),
+                                                  annotation_legend_param = list(list(title_position = "topcenter",title = "cluster")),
+                                                  show_annotation_name = FALSE,
+                                                  gap = unit(c(2), "mm"),
+                                                  show_legend = TRUE)
+}
+all.equal(names(lehmans_epith_pat_both), patients_now)
+
+
+# add basal signature
+lehmans_epith_pat_both_wbasal_new <- lehmans_epith_pat_both_new
+for (i in 1:length(patients_now)) {
+  lehmans_epith_pat_both_wbasal_new[[i]] <- rbind(lehmans_epith_pat_both_new[[i]], pData(HSMM_allepith_clustering)$basal_PNAS_avg_exprs[which(HSMM_allepith_clustering$patient == patients_now[i])])
+  rownames(lehmans_epith_pat_both_wbasal_new[[i]])[5] <- "intrinsic_basal"
+}
+
+# new heatmap with basal
+ht_sep_lehmans_both_wbasal_new <-
+  Heatmap(lehmans_epith_pat_both_wbasal_new[[1]],
+          col = colorRamp2(c(-0.7, 0, 1), c("blue","white", "red")),
+          cluster_rows = FALSE,
+          show_column_names = FALSE,
+          column_title = patients_now[1],
+          column_title_gp = gpar(fontsize = 12),
+          top_annotation = ha_lehman_epith_pat[[1]],
+          name = patients_now[1], 
+          show_row_names = FALSE,
+          top_annotation_height = unit(c(1), "cm"),
+          heatmap_legend_param = list(title_gp = gpar(fontsize = 9), labels_gp = gpar(fontsize = 9))) +
+  Heatmap(lehmans_epith_pat_both_wbasal_new[[2]],
+          col = colorRamp2(c(-0.7, 0, 1), c("blue","white", "red")),
+          cluster_rows = FALSE,
+          show_column_names = FALSE,
+          column_title = patients_now[2],
+          column_title_gp = gpar(fontsize = 12),
+          top_annotation = ha_lehman_epith_pat[[2]],
+          name = patients_now[2], 
+          show_row_names = FALSE,
+          top_annotation_height = unit(c(1), "cm"),
+          heatmap_legend_param = list(title_gp = gpar(fontsize = 9), labels_gp = gpar(fontsize = 9))) +
+  Heatmap(lehmans_epith_pat_both_wbasal_new[[3]],
+          col = colorRamp2(c(-0.7, 0, 1), c("blue","white", "red")),
+          cluster_rows = FALSE,
+          show_column_names = FALSE,
+          column_title = patients_now[3],
+          column_title_gp = gpar(fontsize = 12),
+          top_annotation = ha_lehman_epith_pat[[3]],
+          name = patients_now[3], 
+          show_row_names = FALSE,
+          top_annotation_height = unit(c(1), "cm"),
+          heatmap_legend_param = list(title_gp = gpar(fontsize = 9), labels_gp = gpar(fontsize = 9))) +
+  Heatmap(lehmans_epith_pat_both_wbasal_new[[4]],
+          col = colorRamp2(c(-0.7, 0, 1), c("blue","white", "red")),
+          cluster_rows = FALSE,
+          show_column_names = FALSE,
+          column_title = patients_now[4],
+          column_title_gp = gpar(fontsize = 12),
+          top_annotation = ha_lehman_epith_pat[[4]],
+          name = patients_now[4], 
+          show_row_names = FALSE,
+          top_annotation_height = unit(c(1), "cm"),
+          heatmap_legend_param = list(title_gp = gpar(fontsize = 9), labels_gp = gpar(fontsize = 9))) +
+  Heatmap(lehmans_epith_pat_both_wbasal_new[[5]],
+          col = colorRamp2(c(-0.7, 0, 1), c("blue","white", "red")),
+          cluster_rows = FALSE,
+          show_column_names = FALSE,
+          column_title = patients_now[5],
+          column_title_gp = gpar(fontsize = 12),
+          top_annotation = ha_lehman_epith_pat[[5]],
+          name = patients_now[5], 
+          show_row_names = FALSE,
+          top_annotation_height = unit(c(1), "cm"),
+          heatmap_legend_param = list(title_gp = gpar(fontsize = 9), labels_gp = gpar(fontsize = 9))) +
+  Heatmap(lehmans_epith_pat_both_wbasal_new[[6]],
+          col = colorRamp2(c(-0.7, 0, 1), c("blue","white", "red")),
+          cluster_rows = FALSE,
+          row_names_side = "right",
+          column_title = patients_now[6],
+          column_title_gp = gpar(fontsize = 12),
+          top_annotation = ha_lehman_epith_pat[[6]],
+          name = patients_now[6], 
+          show_column_names = FALSE,
+          top_annotation_height = unit(c(1), "cm"),
+          heatmap_legend_param = list(title_gp = gpar(fontsize = 9), labels_gp = gpar(fontsize = 9)))
+#pdf(here("plots", "fig3d.pdf"), onefile = FALSE, width = 20)
+print(draw(ht_sep_lehmans_both_wbasal_new, annotation_legend_side = "bottom"))
+#dev.off()
+
+
+# per patient and per cluster Lehman plots
+all.equal(colnames(HSMM_allepith_clustering), names(assignments_lehman_both_epithelial_new))
+pData(HSMM_allepith_clustering)$assignments_lehman_both_new <- assignments_lehman_both_epithelial_new
+
+#pdf(here("plots", "fig3g.pdf"), width = 10)
+plot_cell_clusters(HSMM_allepith_clustering, 1, 2, color = "assignments_lehman_both_new", cell_size = 2) + facet_wrap(~patient)
+#dev.off()
+
+#pdf(here("plots", "figS8.pdf"), width = 10)
+plot_cell_clusters(HSMM_allepith_clustering, 1, 2, color = "assignments_lehman_both_new", cell_size = 2) + facet_wrap(~Cluster)
+#dev.off()
+
+
+# dot plots new lehman signatures
+clust_avg_lehman_both_new <- matrix(NA, nrow = length(unique(HSMM_allepith_clustering$Cluster)), ncol = nrow(lehman_avg_both_epithelial_new))
+rownames(clust_avg_lehman_both_new) <- paste("clust", c(1:length(unique(HSMM_allepith_clustering$Cluster))), sep = "")
+colnames(clust_avg_lehman_both_new) <- rownames(lehman_avg_both_epithelial_new)
+for (c in 1:length(unique(HSMM_allepith_clustering$Cluster))) {
+  clust_avg_lehman_both_new[c,] <- apply(lehman_avg_both_epithelial_new[,which(HSMM_allepith_clustering$Cluster == c)], 1, mean)
+}
+
+clust_avg_lehman_both_new <- as.data.frame(clust_avg_lehman_both_new)
+clust_avg_lehman_both_new$Cluster <- rownames(clust_avg_lehman_both_new)
+clust_avg_lehman_melt_new <- melt(clust_avg_lehman_both_new, "Cluster")
+
+pdf(here("plots", "fig3e.pdf"), width = 7)
+ggplot(clust_avg_lehman_melt_new, aes(Cluster, value, fill = factor(variable), color = factor(variable), 
+                                      shape = factor(variable))) + 
+  geom_point(size = 3, stroke = 1) +
+  scale_shape_discrete(solid = T) + 
+  #guides(colour = guide_legend(override.aes = list(size=3))) + 
+  ylab("average expression of signature in cluster") +
+  xlab("cluster") +
+  ylim(c(-0.35, 0.5))
+dev.off()
+
+
+## normal signatures
+ml_signature_long <- read.table(here("data", "ML_signature.txt"), sep = "\t", header = TRUE)
+if (length(which(ml_signature_long$Symbol == "")) > 0)
+  ml_signature_long <- ml_signature_long[-which(ml_signature_long$Symbol == ""),]
+ml_signature_long <- ml_signature_long[order(ml_signature_long$Symbol, -abs(ml_signature_long$Average.log.fold.change) ), ]
+ml_signature_long <- ml_signature_long[ !duplicated(ml_signature_long$Symbol), ]
+ml_signature <- ml_signature_long[which(!is.na(match(ml_signature_long$Symbol, rownames(mat_ct)))), ]
+ml_up <- ml_signature[which(ml_signature$Average.log.fold.change > 0), ]
+ml_down <- ml_signature[which(ml_signature$Average.log.fold.change < 0), ]
+idx_ml_up <- match(ml_up$Symbol, rownames(mat_ct))
+idx_ml_down <- match(ml_down$Symbol, rownames(mat_ct))
+
+basal_signature_long <- read.table(here("data", "basal_signature.txt"), sep = "\t", header = TRUE)
+if (length(which(basal_signature_long$Symbol == "")) > 0)
+  basal_signature_long <- basal_signature_long[-which(basal_signature_long$Symbol == ""),]
+basal_signature_long <- basal_signature_long[order(basal_signature_long$Symbol, -abs(basal_signature_long$Average.log.fold.change) ), ]
+basal_signature_long <- basal_signature_long[ !duplicated(basal_signature_long$Symbol), ]
+basal_signature <- basal_signature_long[which(!is.na(match(basal_signature_long$Symbol, rownames(mat_ct)))), ]
+basal_up <- basal_signature[which(basal_signature$Average.log.fold.change > 0), ]
+basal_down <- basal_signature[which(basal_signature$Average.log.fold.change < 0), ]
+idx_basal_up <- match(basal_up$Symbol, rownames(mat_ct))
+idx_basal_down <- match(basal_down$Symbol, rownames(mat_ct))
+
+lp_signature_long <- read.table(here("data", "lp_signature.txt"), sep = "\t", header = TRUE)
+if (length(which(lp_signature_long$Symbol == "")) > 0)
+  lp_signature_long <- lp_signature_long[-which(lp_signature_long$Symbol == ""),]
+lp_signature_long <- lp_signature_long[order(lp_signature_long$Symbol, -abs(lp_signature_long$Average.log.fold.change) ), ]
+lp_signature_long <- lp_signature_long[ !duplicated(lp_signature_long$Symbol), ]
+lp_signature <- lp_signature_long[which(!is.na(match(lp_signature_long$Symbol, rownames(mat_ct)))), ]
+lp_up <- lp_signature[which(lp_signature$Average.log.fold.change > 0), ]
+lp_down <- lp_signature[which(lp_signature$Average.log.fold.change < 0), ]
+idx_lp_up <- match(lp_up$Symbol, rownames(mat_ct))
+idx_lp_down <- match(lp_down$Symbol, rownames(mat_ct))
+
+normsig_avg_exprs <- apply(mat_ct, 2, function(x){
+  
+  avg_ml_up <- mean(x[idx_ml_up])
+  avg_ml_down <- mean(x[idx_ml_down])
+  avg_ml_both <- avg_ml_up - avg_ml_down
+  
+  avg_basal_up <- mean(x[idx_basal_up])
+  avg_basal_down <- mean(x[idx_basal_down])
+  avg_basal_both <- avg_basal_up - avg_basal_down
+  
+  avg_lp_up <- mean(x[idx_lp_up])
+  avg_lp_down <- mean(x[idx_lp_down])
+  avg_lp_both <- avg_lp_up - avg_lp_down
+  
+  return(c(avg_ml_up, avg_basal_up, avg_lp_up, avg_ml_both, avg_basal_both, avg_lp_both))
+})
+rownames(normsig_avg_exprs) <- c("avg_ml_up", "avg_basal_up", "avg_lp_up", "avg_ml_both", "avg_basal_both", "avg_lp_both")
+all.equal(colnames(normsig_avg_exprs), rownames(pd_ct))
+normsig_avg_exprs_epithelial <- normsig_avg_exprs[,which(pd_ct$cell_types_cl_all == "epithelial")]
+
+normsig_avg_ups <- normsig_avg_exprs[c(1:3), ]
+all.equal(colnames(normsig_avg_ups), rownames(pd_ct))
+normsig_avg_ups_epithelial <- normsig_avg_ups[,which(pd_ct$cell_types_cl_all == "epithelial")]
+
+normsig_avg_both <- normsig_avg_exprs[c(4:6),]
+all.equal(colnames(normsig_avg_both), rownames(pd_ct))
+normsig_avg_both_epithelial <- normsig_avg_both[,which(pd_ct$cell_types_cl_all == "epithelial")]
+
+assignments_normsig_ups <- apply(normsig_avg_ups, 2, function(x){rownames(normsig_avg_ups)[which.max(x)]})
+assignments_normsig_ups_epithelial <- assignments_normsig_ups[which(pd_ct$cell_types_cl_all == "epithelial")]
+assignments_normsig_both <- apply(normsig_avg_both, 2, function(x){rownames(normsig_avg_both)[which.max(x)]})
+assignments_normsig_both_epithelial <- assignments_normsig_both[which(pd_ct$cell_types_cl_all == "epithelial")]
+
+# heatmaps on normal signatures per patient
+pd_ct_epith <- pd_ct[which(pd_ct$cell_types_cl_all == "epithelial"),]
+normsig_epith_pat_both <- list()
+normsig_epith_pat_ups <- list()
+pds_epith_ct <- list()
+for (i in 1:length(patients_now)) {
+  normsig_epith_pat_both[[i]] <- normsig_avg_both_epithelial[,which(pd_ct_epith$patient == patients_now[i])]
+  normsig_epith_pat_ups[[i]] <- normsig_avg_ups_epithelial[,which(pd_ct_epith$patient == patients_now[i])]
+  pds_epith_ct[[i]] <- pds_ct[[i]][which(pds_ct[[i]]$cell_types_cl_all == "epithelial"),]
+}
+names(normsig_epith_pat_both) <- patients_now
+names(normsig_epith_pat_ups) <- patients_now
+names(pds_epith_ct) <- patients_now
+
+ht_sep_normsig_both <-
+  Heatmap(normsig_epith_pat_both[[1]],
+          col = colorRamp2(c(-0.7, -0.2, 0.7), c("blue","white", "red")),
+          cluster_rows = FALSE,
+          show_column_names = FALSE,
+          column_title = patients_now[1],
+          top_annotation = ha_lehman_epith_pat[[1]],
+          column_title_gp = gpar(fontsize = 12),
+          show_row_names = FALSE,
+          name = patients_now[1], 
+          top_annotation_height = unit(c(2), "cm"),
+          heatmap_legend_param = list(title_gp = gpar(fontsize = 9), labels_gp = gpar(fontsize = 9))) +
+  Heatmap(normsig_epith_pat_both[[2]],
+          col = colorRamp2(c(-0.7, -0.2, 0.7), c("blue","white", "red")),
+          cluster_rows = FALSE,
+          show_column_names = FALSE,
+          column_title = patients_now[2],
+          column_title_gp = gpar(fontsize = 12),
+          top_annotation = ha_lehman_epith_pat[[2]],
+          name = patients_now[2], 
+          show_row_names = FALSE,
+          top_annotation_height = unit(c(2), "cm"),
+          heatmap_legend_param = list(title_gp = gpar(fontsize = 9), labels_gp = gpar(fontsize = 9))) +
+  Heatmap(normsig_epith_pat_both[[3]],
+          col = colorRamp2(c(-0.7, -0.2, 0.7), c("blue","white", "red")),
+          cluster_rows = FALSE,
+          show_column_names = FALSE,
+          column_title = patients_now[3],
+          column_title_gp = gpar(fontsize = 12),
+          top_annotation = ha_lehman_epith_pat[[3]],
+          name = patients_now[3], 
+          show_row_names = FALSE,
+          top_annotation_height = unit(c(2), "cm"),
+          heatmap_legend_param = list(title_gp = gpar(fontsize = 9), labels_gp = gpar(fontsize = 9))) +
+  Heatmap(normsig_epith_pat_both[[4]],
+          col = colorRamp2(c(-0.7, -0.2, 0.7), c("blue","white", "red")),
+          cluster_rows = FALSE,
+          show_column_names = FALSE,
+          column_title = patients_now[4],
+          column_title_gp = gpar(fontsize = 12),
+          top_annotation = ha_lehman_epith_pat[[4]],
+          name = patients_now[4], 
+          show_row_names = FALSE,
+          top_annotation_height = unit(c(2), "cm"),
+          heatmap_legend_param = list(title_gp = gpar(fontsize = 9), labels_gp = gpar(fontsize = 9))) +
+  Heatmap(normsig_epith_pat_both[[5]],
+          col = colorRamp2(c(-0.7, -0.2, 0.7), c("blue","white", "red")),
+          cluster_rows = FALSE,
+          show_column_names = FALSE,
+          column_title = patients_now[5],
+          column_title_gp = gpar(fontsize = 12),
+          top_annotation = ha_lehman_epith_pat[[5]],
+          name = patients_now[5], 
+          show_row_names = FALSE,
+          top_annotation_height = unit(c(2), "cm"),
+          heatmap_legend_param = list(title_gp = gpar(fontsize = 9), labels_gp = gpar(fontsize = 9))) +
+  Heatmap(normsig_epith_pat_both[[6]],
+          col = colorRamp2(c(-0.7, -0.2, 0.7), c("blue","white", "red")),
+          cluster_rows = FALSE,
+          row_names_side = "right",
+          column_title = patients_now[6],
+          column_title_gp = gpar(fontsize = 12),
+          top_annotation = ha_lehman_epith_pat[[6]],
+          name = patients_now[6], 
+          show_column_names = FALSE,
+          top_annotation_height = unit(c(2), "cm"),
+          heatmap_legend_param = list(title_gp = gpar(fontsize = 9), labels_gp = gpar(fontsize = 9)))
+#pdf(here("plots", "fig3b.pdf"), onefile = FALSE, width = 20)
+print(draw(ht_sep_normsig_both, annotation_legend_side = "bottom"))
+#dev.off()
+
+
+# per patient and per cluster normal signatures plots
+all.equal(colnames(HSMM_allepith_clustering), names(assignments_normsig_both_epithelial))
+pData(HSMM_allepith_clustering)$assignments_normsig_both <- assignments_normsig_both_epithelial
+pData(HSMM_allepith_clustering)$assignments_normsig_ups <- assignments_normsig_ups_epithelial
+
+#pdf(here("plots", "fig3c.pdf"), width = 10)
+plot_cell_clusters(HSMM_allepith_clustering, 1, 2, color = "assignments_normsig_both", cell_size = 2) + facet_wrap(~patient)
+#dev.off()
+
+#pdf(here("plots", "figS7.pdf"), width = 10)
+plot_cell_clusters(HSMM_allepith_clustering, 1, 2, color = "assignments_normsig_both", cell_size = 2) + facet_wrap(~Cluster)
+#dev.off()
+
+
+# dot plots normal signatures
+all.equal(HSMM_allepith_clustering$Cluster, clustering_allepith)
+all.equal(colnames(normsig_avg_both_epithelial), colnames(HSMM_allepith_clustering))
+
+clust_avg_normsig_both <- matrix(NA, nrow = length(unique(HSMM_allepith_clustering$Cluster)), ncol = nrow(normsig_avg_both_epithelial))
+rownames(clust_avg_normsig_both) <- paste("clust", c(1:length(unique(HSMM_allepith_clustering$Cluster))), sep = "")
+colnames(clust_avg_normsig_both) <- rownames(normsig_avg_both_epithelial)
+for (c in 1:length(unique(HSMM_allepith_clustering$Cluster))) {
+  clust_avg_normsig_both[c,] <- apply(normsig_avg_both_epithelial[,which(HSMM_allepith_clustering$Cluster == c)], 1, mean)
+}
+
+clust_avg_normsig_both <- as.data.frame(clust_avg_normsig_both)
+clust_avg_normsig_both$Cluster <- rownames(clust_avg_normsig_both)
+clust_avg_normsig_melt <- melt(clust_avg_normsig_both, "Cluster")
+
+#pdf(here("plots", "fig3c.pdf"), width = 6.5)
+ggplot(clust_avg_normsig_melt, aes(Cluster, value, fill = factor(variable), color = factor(variable), 
+                                   shape = factor(variable))) + 
+  geom_point(size = 3, stroke = 1) +
+  scale_shape_discrete(solid = T) + 
+  ylab("average expression of signature in cluster") +
+  xlab("cluster") +
+  ylim(c(-0.35, 0.5))
+#dev.off()
+
+
+## Mammaprint signature
+mammaprint_long <- read.table(here("data", "mammaprint_sig_new.txt"), header = TRUE, sep = "\t")
+mammaprint <- apply(mammaprint_long, 2, function(x){return(intersect(x, rownames(mat_ct)))})[,1]
+mammaprint_avg_exprs <- apply(mat_ct[match(mammaprint, rownames(mat_ct)),], 2, mean)
+all.equal(names(mammaprint_avg_exprs), colnames(mat_ct))
+mammaprint_avg_exprs <- mammaprint_avg_exprs[which(pd_ct$cell_types_cl_all == "epithelial")]
+
+# per patient and per cluster Mammaprint plots
+all.equal(colnames(HSMM_allepith_clustering), names(mammaprint_avg_exprs))
+pData(HSMM_allepith_clustering)$mammaprint_avg_exprs <- mammaprint_avg_exprs
+
+#pdf(here("plots", "figS13b.pdf"), width = 10)
+plot_cell_clusters(HSMM_allepith_clustering, 1, 2, color = "mammaprint_avg_exprs", cell_size = 2) + facet_wrap(~patient) +
+  scale_color_continuous(low = "yellow", high = "blue")
+#dev.off()
+
+#pdf(here("plots", "figS13a.pdf"), width = 10)
+plot_cell_clusters(HSMM_allepith_clustering, 1, 2, color = "mammaprint_avg_exprs", cell_size = 2) + facet_wrap(~Cluster) +
+  scale_color_continuous(low = "yellow", high = "blue")
+#dev.off()
+
+
+## zena werb signature
+zenawerb_long <- read.table(here("data", "werb_49_metastasis_sig.txt"), header = TRUE, sep = "\t")
+zenawerb <- apply(zenawerb_long, 2, function(x){return(intersect(x, rownames(mat_ct)))})[,1]
+zenawerb_avg_exprs <- apply(mat_ct[match(zenawerb, rownames(mat_ct)),], 2, mean)
+all.equal(names(zenawerb_avg_exprs), colnames(mat_ct))
+zenawerb_avg_exprs <- zenawerb_avg_exprs[which(pd_ct$cell_types_cl_all == "epithelial")]
+
+# per patient and per cluster Zena Werb Signature plots
+all.equal(colnames(HSMM_allepith_clustering), names(zenawerb_avg_exprs))
+pData(HSMM_allepith_clustering)$zenawerb_avg_exprs <- zenawerb_avg_exprs
+
+#pdf(here("plots", "figS14b.pdf"), width = 10)
+plot_cell_clusters(HSMM_allepith_clustering, 1, 2, color = "zenawerb_avg_exprs", cell_size = 2) + facet_wrap(~patient) +
+  scale_color_continuous(low = "yellow", high = "blue")
+#dev.off()
+
+#pdf(here("plots", "figS14a.pdf"), width = 10)
+plot_cell_clusters(HSMM_allepith_clustering, 1, 2, color = "zenawerb_avg_exprs", cell_size = 2) + facet_wrap(~Cluster) +
+  scale_color_continuous(low = "yellow", high = "blue")
+#dev.off()
+
+
+## carlos artega signature
+artega_long <- read.table(here("data", "artega_sig.txt"), header = TRUE, sep = "\t")
+artega <- apply(artega_long, 2, function(x){return(intersect(x, rownames(mat_ct)))})[,1]
+artega_avg_exprs <- apply(mat_ct[match(artega, rownames(mat_ct)),], 2, mean)
+all.equal(names(artega_avg_exprs), colnames(mat_ct))
+artega_avg_exprs <- artega_avg_exprs[which(pd_ct$cell_types_cl_all == "epithelial")]
+
+# per patient and per cluster Artega signature plots
+all.equal(colnames(HSMM_allepith_clustering), names(artega_avg_exprs))
+pData(HSMM_allepith_clustering)$artega_avg_exprs <- artega_avg_exprs
+
+#pdf(here("plots", "figS15a.pdf"), width = 10)
+plot_cell_clusters(HSMM_allepith_clustering, 1, 2, color = "artega_avg_exprs", cell_size = 2) + facet_wrap(~patient) +
+  scale_color_continuous(low = "yellow", high = "blue")
+#dev.off()
+
+#pdf(here("plots", "figS15b.pdf"), width = 10)
+plot_cell_clusters(HSMM_allepith_clustering, 1, 2, color = "artega_avg_exprs", cell_size = 2) + facet_wrap(~Cluster) +
+  scale_color_continuous(low = "yellow", high = "blue")
+#dev.off()
+
+
+## heatmap on prognosis signatures
+prognosis_sig <- cbind(mammaprint_avg_exprs, zenawerb_avg_exprs, artega_avg_exprs)
+colnames(prognosis_sig) <- c("mammaprint", "zenawerb", "artega")
+
+# mammaprint, zenawerb and carlos artega signatures separate per patient
+prognosis_epith_pat <- list()
+for (i in 1:length(patients_now)) {
+  prognosis_epith_pat[[i]] <- t(prognosis_sig)[,which(pd_ct_epith$patient == patients_now[i])]
+}
+names(prognosis_epith_pat) <- patients_now
+for (i in 1:length(patients_now)) {
+  print(all.equal(colnames(prognosis_epith_pat[[1]]), rownames(pds_epith_ct[[1]])))
+  print(all.equal(names(clusterings_sep_allepith[[1]]), colnames(prognosis_epith_pat[[1]])))
+}
+
+ht_sep_prognosis <-
+  Heatmap(prognosis_epith_pat[[1]],
+          cluster_rows = FALSE,
+          col = colorRamp2(c(-0.2, 0.2, 1), c("blue","white", "red")),
+          show_column_names = FALSE,
+          column_title = patients_now[1],
+          top_annotation = ha_lehman_epith_pat[[1]],
+          column_title_gp = gpar(fontsize = 12),
+          show_row_names = FALSE,
+          name = patients_now[1], 
+          top_annotation_height = unit(c(2), "cm"),
+          heatmap_legend_param = list(title_gp = gpar(fontsize = 9), labels_gp = gpar(fontsize = 9))) +
+  Heatmap(prognosis_epith_pat[[2]],
+          col = colorRamp2(c(-0.2, 0.2, 1), c("blue","white", "red")),
+          cluster_rows = FALSE,
+          show_column_names = FALSE,
+          column_title = patients_now[2],
+          column_title_gp = gpar(fontsize = 12),
+          top_annotation = ha_lehman_epith_pat[[2]],
+          name = patients_now[2], 
+          show_row_names = FALSE,
+          top_annotation_height = unit(c(2), "cm"),
+          heatmap_legend_param = list(title_gp = gpar(fontsize = 9), labels_gp = gpar(fontsize = 9))) +
+  Heatmap(prognosis_epith_pat[[3]],
+          col = colorRamp2(c(-0.2, 0.2, 1), c("blue","white", "red")),
+          cluster_rows = FALSE,
+          show_column_names = FALSE,
+          column_title = patients_now[3],
+          column_title_gp = gpar(fontsize = 12),
+          top_annotation = ha_lehman_epith_pat[[3]],
+          name = patients_now[3], 
+          show_row_names = FALSE,
+          top_annotation_height = unit(c(2), "cm"),
+          heatmap_legend_param = list(title_gp = gpar(fontsize = 9), labels_gp = gpar(fontsize = 9))) +
+  Heatmap(prognosis_epith_pat[[4]],
+          col = colorRamp2(c(-0.2, 0.2, 1), c("blue","white", "red")),
+          cluster_rows = FALSE,
+          show_column_names = FALSE,
+          column_title = patients_now[4],
+          column_title_gp = gpar(fontsize = 12),
+          top_annotation = ha_lehman_epith_pat[[4]],
+          name = patients_now[4], 
+          show_row_names = FALSE,
+          top_annotation_height = unit(c(2), "cm"),
+          heatmap_legend_param = list(title_gp = gpar(fontsize = 9), labels_gp = gpar(fontsize = 9))) +
+  Heatmap(prognosis_epith_pat[[5]],
+          col = colorRamp2(c(-0.2, 0.2, 1), c("blue","white", "red")),
+          cluster_rows = FALSE,
+          show_column_names = FALSE,
+          column_title = patients_now[5],
+          column_title_gp = gpar(fontsize = 12),
+          top_annotation = ha_lehman_epith_pat[[5]],
+          name = patients_now[5], 
+          show_row_names = FALSE,
+          top_annotation_height = unit(c(2), "cm"),
+          heatmap_legend_param = list(title_gp = gpar(fontsize = 9), labels_gp = gpar(fontsize = 9))) +
+  Heatmap(prognosis_epith_pat[[6]],
+          col = colorRamp2(c(-0.2, 0.2, 1), c("blue","white", "red")),
+          cluster_rows = FALSE,
+          row_names_side = "right",
+          column_title = patients_now[6],
+          column_title_gp = gpar(fontsize = 12),
+          top_annotation = ha_lehman_epith_pat[[6]],
+          name = patients_now[6], 
+          show_column_names = FALSE,
+          top_annotation_height = unit(c(2), "cm"),
+          heatmap_legend_param = list(title_gp = gpar(fontsize = 9), labels_gp = gpar(fontsize = 9)))
+#pdf(here("plots", "fig4a.pdf"), onefile = FALSE, width = 20)
+print(draw(ht_sep_prognosis, annotation_legend_side = "bottom"))
+#dev.off()
+
+
+# violin ranking plot for prognosis signatures
+clust_avg_prognosis <- matrix(NA, nrow = length(unique(HSMM_allepith_clustering$Cluster)), ncol = ncol(prognosis_sig))
+rownames(clust_avg_prognosis) <- paste("clust", c(1:length(unique(HSMM_allepith_clustering$Cluster))), sep = "")
+colnames(clust_avg_prognosis) <- colnames(prognosis_sig)
+for (c in 1:length(unique(HSMM_allepith_clustering$Cluster))) {
+  clust_avg_prognosis[c,] <- apply(prognosis_sig[which(HSMM_allepith_clustering$Cluster == c),], 2, mean)}
+
+prognosis_sig <- as.data.frame(prognosis_sig)
+all.equal(rownames(prognosis_sig), colnames(HSMM_allepith_clustering))
+prognosis_sig$Cluster <- as.numeric(HSMM_allepith_clustering$Cluster)
+
+prognosis_melt <- melt(prognosis_sig, id.vars = c("Cluster"))
+prognosis_melt$value <- as.numeric(prognosis_melt$value)
+prognosis_melt <- prognosis_melt %>%
+  filter(Cluster %in% c(2,3,4))
+
+#pdf(here("plots", "fig4b.pdf"), width = 9)
+p <- ggplot(prognosis_melt, aes(factor(Cluster), value, fill = factor(Cluster))) +
+  scale_fill_manual(values = c("1" = "#ee204d", "2" = "#17806d", "3" = "#b2ec5d", "4" = "#cda4de", "5" = "#1974d2"))
+p + geom_violin(adjust = .5) + facet_wrap(~variable) + stat_summary(fun.y = mean, geom = "point", shape = 22, size = 3)
+#dev.off()
+
+
+## venn diagram signatures intersection
+#pdf(here("plots", "figS16.pdf"))
+venn(list("PS" = mammaprint, "MBS" = zenawerb, "RTS" = artega))
+#dev.off()
+
+
+## t-sne clustering from 3a, with different colors of dots
+# repeat plot 3a with normal signatures
+#pdf(here("plots", "figS10b.pdf"), width = 10, height = 10)
+plot_cell_clusters(HSMM_allepith_clustering, 1, 2, color = "assignments_normsig_both", cell_size = 3)
+#dev.off()
+
+# repeat plot 3a with TNBCtype4 Lehman signatures
+lehman_avg_both_epithelial_new <- lehman_avg_both_epithelial[-which(rownames(lehman_avg_both_epithelial) %in% c("immunomodulatory", "mesenchymal_stem_like")),]
+assignments_lehman_both_epithelial_new <- apply(lehman_avg_both_epithelial_new, 2, function(x){rownames(lehman_avg_both_epithelial_new)[which.max(x)]})
+all.equal(colnames(HSMM_allepith_clustering), names(assignments_lehman_both_epithelial_new))
+pData(HSMM_allepith_clustering)$assignments_lehman_both_new <- assignments_lehman_both_epithelial_new
+
+#pdf(here("plots", "figS10c.pdf"), width = 10, height = 10)
+plot_cell_clusters(HSMM_allepith_clustering, 1, 2, color = "assignments_lehman_both_new", cell_size = 3)
+#dev.off()
+
+# repeat plot 3a with mammaprint signature (PS)
+#pdf(here("plots", "figS10d.pdf"), width = 10, height = 10)
+plot_cell_clusters(HSMM_allepith_clustering, 1, 2, color = "mammaprint_avg_exprs", cell_size = 3) +
+  scale_color_continuous(low = "yellow", high = "blue")
+#dev.off()
+
+
+## heatmap for pathways
+path1 <- c("ST3GAL4", "ST3GAL6", "ST8SIA1", "FUT1", "FUT2", "FUT3", "FUT4", "FUT6", "FUT9", "GLTP", "SPTLC1", "KDSR", "SPTLC2", "CERK", "ARSA")
+idx_path1 <- match(path1, rownames(HSMM_allepith_clustering))
+
+path2 <- c("CCL20", "CCL22", "CCL4", "CCR6", "IL11", "IL12RB1", "IL6R", "CSF2RA", "BMP7", "GLMN", "GPI", "INHBA", "TNF", 
+           "TNFSF15", "GHR", "LEPR", "TLR1", "TLR2", "TLR5", "TLR7", "TLR10", "F11R")
+idx_path2 <- match(path2, rownames(HSMM_allepith_clustering))
+
+path3 <- c("ERBB2", "AKT1", "AKT3", "PIK3R3", "PIK3R4", "RPS6KB2", "TRIB3", "BTK", "GRB10", "GRB2", "ILK", "PAK1", "PRKCZ", "CSNK2A1",
+           "IRS1", "IRAK1", "MYD88", "MAP2K1", "MAPK8", "MAPK1", "PTPN11", "EIF4E", "EIF4EBP1", "EIF4G1", "FKBP1A", "PDK1", "RHEB", "RPS6KB1")
+idx_path3 <- match(path3, rownames(HSMM_allepith_clustering))
+
+all_idx_paths <- c(idx_path1, idx_path2)
+
+names_path <- c(rep("glycosphigolipid metabolism", length(idx_path1)), rep("innate immunity", length(idx_path2)))
+anno_cols_path <- c("glycosphigolipid metabolism" = "#ff9baa", "innate immunity" = "#17806d")
+ha_path_rows <- HeatmapAnnotation(df = data.frame(pathway = names_path),
+                                  annotation_legend_param = list(pathway = list(ncol = 1, title = "pathway", title_position = "topcenter")),
+                                  which = "row", col = list("pathway" = anno_cols_path), annotation_width = unit(3, "mm"))
+
+# separate matrices per cluster and only extract the relevant genes
+mat_epith_allpats <- exprs(HSMM_allepith_clustering)
+mats_epith_patient <- list()
+pds_epith_patient <- list()
+mats_epith_patient_clusters <- list()
+for (i in 1:length(patients_now)) {
+  pds_epith_patient[[i]] <- pData(HSMM_allepith_clustering)[which(pData(HSMM_allepith_clustering)$patient == patients_now[i]), ]
+  mats_epith_patient[[i]] <- mat_epith_allpats[all_idx_paths, which(pData(HSMM_allepith_clustering)$patient == patients_now[i])]
+  mats_epith_patient_clusters[[i]] <- list()
+  for (c in 1:length(unique(HSMM_allepith_clustering$Cluster))) {
+    mats_epith_patient_clusters[[i]][[c]] <- mats_epith_patient[[i]][, which(pds_epith_patient[[i]]$Cluster == c)]
+  }
+  names(mats_epith_patient_clusters[[i]]) <- paste0("clust", c(1:5))
+}
+names(mats_epith_patient) <- patients_now
+names(pds_epith_patient) <- patients_now
+
+# heatmap
+ht_paths <-
+  ha_path_rows + 
+  Heatmap(mats_epith_patient_clusters[[1]][[1]], 
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE, 
+          show_column_dend = TRUE, show_column_names = FALSE,
+          name = "cluster1", column_title = "cluster1",
+          row_names_gp = gpar(fontsize = 9, col = anno_cols_path),
+          split = names_path) +
+  Heatmap(mats_epith_patient_clusters[[1]][[2]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE,
+          name = "cluster2", column_title = "cluster2",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[1]][[3]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE, 
+          name = "cluster3", column_title = "cluster3",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[1]][[4]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE, 
+          name = "cluster4", column_title = "cluster4",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[1]][[5]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE, 
+          name = "cluster5", column_title = "cluster5",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[2]][[1]], 
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE, 
+          show_column_dend = TRUE, show_column_names = FALSE,
+          name = "cluster1_2", column_title = "cluster1",
+          row_names_gp = gpar(fontsize = 9, col = anno_cols_path),
+          split = names_path) +
+  Heatmap(mats_epith_patient_clusters[[2]][[2]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE,
+          name = "cluster2_2", column_title = "cluster2",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[2]][[3]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE, 
+          name = "cluster3_2", column_title = "cluster3",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[2]][[4]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE, 
+          name = "cluster4_2", column_title = "cluster4",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[2]][[5]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE, 
+          name = "cluster5_2", column_title = "cluster5",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) + 
+  Heatmap(mats_epith_patient_clusters[[3]][[1]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE,
+          name = "cluster1_3", column_title = "cluster1",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[3]][[2]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE,
+          name = "cluster2_3", column_title = "cluster2",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[3]][[3]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE, 
+          name = "cluster3_3", column_title = "cluster3",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[3]][[4]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE, 
+          name = "cluster4_3", column_title = "cluster4",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[3]][[5]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE, 
+          name = "cluster5_3", column_title = "cluster5",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[4]][[1]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE,
+          name = "cluster1_4", column_title = "cluster1",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[4]][[2]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE,
+          name = "cluster2_4", column_title = "cluster2",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[4]][[3]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE, 
+          name = "cluster3_4", column_title = "cluster3",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[4]][[4]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE, 
+          name = "cluster4_4", column_title = "cluster4",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[4]][[5]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE, 
+          name = "cluster5_4", column_title = "cluster5",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[5]][[1]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE,
+          name = "cluster1_5", column_title = "cluster1",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[5]][[2]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE,
+          name = "cluster2_5", column_title = "cluster2",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[5]][[3]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE, 
+          name = "cluster3_5", column_title = "cluster3",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[5]][[4]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE, 
+          name = "cluster4_5", column_title = "cluster4",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[5]][[5]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE, 
+          name = "cluster5_5", column_title = "cluster5",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[6]][[1]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE,
+          name = "cluster1_6", column_title = "cluster1",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[6]][[2]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE,
+          name = "cluster2_6", column_title = "cluster2",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[6]][[3]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE, 
+          name = "cluster3_6", column_title = "cluster3",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[6]][[4]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE, 
+          name = "cluster4_6", column_title = "cluster4",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE) +
+  Heatmap(mats_epith_patient_clusters[[6]][[5]],
+          col = colorRamp2(c(-0.5, 1, 3), c("blue", "white", "red")),
+          cluster_rows = TRUE, show_row_dend = FALSE, 
+          name = "cluster5_6", column_title = "cluster5",
+          show_row_names = FALSE,
+          show_column_dend = TRUE, show_column_names = FALSE)
+#pdf(here("plots", "fig4d.pdf"), onefile = FALSE, width = 25)
+draw(ht_paths)
+#dev.off()
 

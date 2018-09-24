@@ -1,3 +1,5 @@
+## functions to identify cell types based on markers
+
 # function to find which markers are expressed by cells in an expression matrix
 # returns list of lists, length of each list = the number of cells in the matrix
 lists_markers <- function(mat_here, thresh, markers){
