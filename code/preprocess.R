@@ -1,9 +1,10 @@
-# this script processes the TPM data to obtain the normalized data
+## this script processes the TPM data to obtain the normalized data (mat_norm, and its phenodata, pd_norm) 
+
 library(here)
 source(here("code", "libraries.R"))
 source(here("code", "funcs.R"))
 
-# function to intersect multiple vectors
+## function to intersect multiple vectors
 intersect_all <- function(a,b,...){
   Reduce(intersect, list(a,b,...))
 }

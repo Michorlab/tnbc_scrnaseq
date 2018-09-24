@@ -1,3 +1,5 @@
+## functions for various aspects of cell type identification, clustering, signatures etc
+
 # function to match and clean a vector of genes
 match_clean_vector_genes <- function(mat_to_fit, vec_genes){
   
