@@ -1,8 +1,8 @@
 ## this script processes the TPM data to obtain the normalized data (mat_norm, and its phenodata, pd_norm) 
 
 library(here)
-source(here("code", "libraries.R"))
-source(here("code", "funcs.R"))
+source(here::here("code", "libraries.R"))
+source(here::here("code", "funcs.R"))
 
 ## function to intersect multiple vectors
 intersect_all <- function(a,b,...){
@@ -10,10 +10,10 @@ intersect_all <- function(a,b,...){
 }
 
 ## read data
-tpm.rsem <- read.table(here("data", "tpm_original.txt"), sep = "\t")
-counts.rsem <- read.table(here("data", "counts_original.txt"), sep = "\t")
-qc <- read.table(here("data", "qc_original.txt"), sep = "\t", stringsAsFactors = FALSE) # quality control
-mappings <- readRDS(here("data", "mappings.RDS")) # genes info
+tpm.rsem <- read.table(here::here("data", "tpm_original.txt"), sep = "\t")
+counts.rsem <- read.table(here::here("data", "counts_original.txt"), sep = "\t")
+qc <- read.table(here::here("data", "qc_original.txt"), sep = "\t", stringsAsFactors = FALSE) # quality control
+mappings <- readRDS(here::here("data", "mappings.RDS")) # genes info
 
 ## scater intialize
 min_thresh_log_tpm <- 0.1

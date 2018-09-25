@@ -19,4 +19,4 @@ The scripts and data in this repository can generate almost all figures in the m
 ## Data
 
 ## Tables
-The tables contain lists of differentially expressed genes between epithelial clusters. allvs_i_ is differential expression between epithelial cells in cluster i, and all other epithelial cells.
+The tables contain lists of differentially expressed genes between epithelial clusters. *allvs_i_* is differential expression between epithelial cells in cluster *i*, and all other epithelial cells.
