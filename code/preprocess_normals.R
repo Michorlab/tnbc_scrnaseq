@@ -1,5 +1,5 @@
-## this script preprocessses the normal brest single cells (Gao et al 2017 Nat Comm) with the same pipeline as the TNBC
-## cells (script preprocess.R), to more accurately compare the two sets in a correlation map (in the script correlation_map.R)
+## this script preprocessses the normal breast single cells (Gao et al 2017 Nat Comm) with the same pipeline as the TNBC
+## cells (script preprocess.R), to more accurately compare the two sets in a correlation map (as done in the script correlation_map.R)
 
 library(here)
 source(here("code", "libraries.R"))
