@@ -10,7 +10,7 @@
 ##   mammaprint signature (PS)
 ##   zena werb signature (MBS)
 ##   carlos artega signature (RTS)
-##   expression of genes in the metabolsims and immunity pathways
+##   expression of genes in the metabolism and immunity pathways
 
 ## this script generates the following figures from the manuscript: 
 ##   fig. 1b (heatmap)
@@ -26,6 +26,8 @@
 ##   fig. 3e (dot plot)
 ##   fig. 3b (heatmap)
 ##   fig. 3f and S7 (per patient and per cluster plots)
+##   fig. 3c (dot plot)
+##   fig. S13 (per patient and per cluster plots)  
 ##   fig. S14 (per patient and per cluster plots)
 ##   fig. S15 (per patient and per cluster plots)
 ##   fig. 4a (heatmap)
@@ -35,9 +37,9 @@
 ##   fig. S4d (heatmap)
 
 library(here)
-source(here("code", "libraries.R"))
-source(here("code", "funcs.R"))
-source(here("code", "funcs_markers.R"))
+source(here::here("code", "libraries.R"))
+source(here::here("code", "funcs.R"))
+source(here::here("code", "funcs_markers.R"))
 
 ## read in normalized data and phenotypic information
 mat_norm <- read.table(here("data", "norm_data.txt"), sep = "\t", header = TRUE)
@@ -1165,7 +1167,7 @@ all.equal(colnames(HSMM_allepith_clustering), names(assignments_normsig_both_epi
 pData(HSMM_allepith_clustering)$assignments_normsig_both <- assignments_normsig_both_epithelial
 pData(HSMM_allepith_clustering)$assignments_normsig_ups <- assignments_normsig_ups_epithelial
 
-#pdf(here("plots", "fig3c.pdf"), width = 10)
+#pdf(here("plots", "fig3f.pdf"), width = 10)
 plot_cell_clusters(HSMM_allepith_clustering, 1, 2, color = "assignments_normsig_both", cell_size = 2) + facet_wrap(~patient)
 #dev.off()
 

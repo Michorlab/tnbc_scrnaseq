@@ -1,4 +1,4 @@
-## this script processes the TPM data to obtain the normalized data (mat_norm, and its phenodata, pd_norm) 
+## this script preprocesses the TPM data to obtain the normalized data (mat_norm, and its phenodata, pd_norm) 
 
 library(here)
 source(here::here("code", "libraries.R"))
